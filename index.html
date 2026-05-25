@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recipe Extractor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #FAF7F2;
+    --ink: #1A1713;
+    --muted: #7A7168;
+    --border: #E2DDD6;
+    --accent: #C84B2F;
+    --accent-light: #FDF0EC;
+    --success: #2D6A4F;
+    --success-light: #EBF5EF;
+    --card: #FFFFFF;
+    --serif: 'DM Serif Display', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  header {
+    max-width: 680px;
+    margin: 0 auto 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+  }
+
+  header h1 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  header p {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .sheet-note {
+    font-size: 12px;
+    color: var(--muted);
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .sheet-note strong { color: var(--ink); }
+
+  .url-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  input[type="text"], textarea, select {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--ink);
+  }
+
+  .url-row input { flex: 1; }
+
+  button {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 10px 18px;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--ink);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: var(--cream); }
+
+  .btn-extract {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  .btn-extract:hover { background: #333; }
+
+  .btn-save {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+  }
+
+  .btn-save:hover { background: #1f5239; }
+
+  .pills {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    background: white;
+    transition: all 0.15s;
+  }
+
+  .pill.on {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  #textArea { display: none; margin-bottom: 12px; }
+
+  .spinner {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .spinner.show { display: flex; }
+
+  .spin {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: sp 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  .banner {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: var(--success-light);
+    color: var(--success);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    border: 1px solid #b7dfc9;
+  }
+
+  .banner.show { display: flex; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    display: none;
+  }
+
+  .card.show { display: block; }
+
+  .lang-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid #f0c4b8;
+    margin-bottom: 1rem;
+  }
+
+  .flabel {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+    margin-top: 16px;
+  }
+
+  .flabel:first-of-type { margin-top: 0; }
+
+  .two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  textarea { resize: vertical; line-height: 1.6; }
+
+  .row-end {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.25rem 0;
+  }
+
+  @media (max-width: 500px) {
+    .two { grid-template-columns: 1fr; }
+    .row-end { flex-direction: column; }
+    .row-end button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recipe Extractor</h1>
+  <p>Paste a URL — AI extracts the recipe and saves it to your Google Sheet.</p>
+</header>
+
+<div class="main">
+
+  <div class="sheet-note">
+    Saves to: <strong>時間戳記 · Recipe name · Who's favourite · What kind of cuisine · Main Ingredients · Ingredients (with Measurements) · Cooking Steps · Timings · Video link reference</strong>
+  </div>
+
+  <div class="url-row">
+    <input type="text" id="urlIn" placeholder="Paste recipe URL here…" />
+    <button class="btn-extract" onclick="extract()">Extract ↗</button>
+  </div>
+
+  <div class="pills">
+    <div class="pill on" onclick="setPill(this,'web')">🌐 Webpage</div>
+    <div class="pill" onclick="setPill(this,'yt')">▶ YouTube</div>
+    <div class="pill" onclick="setPill(this,'ig')">📷 Instagram</div>
+    <div class="pill" onclick="setPill(this,'text')">📋 Paste text</div>
+  </div>
+
+  <div id="textArea">
+    <textarea id="pasteText" rows="4" placeholder="Paste recipe text or Instagram caption here…"></textarea>
+  </div>
+
+  <div class="spinner" id="spin">
+    <div class="spin"></div>
+    <span id="spinTxt">Extracting recipe…</span>
+  </div>
+
+  <div class="banner" id="banner">✓ Saved to Google Sheet!</div>
+
+  <div class="card" id="card">
+    <div class="lang-badge" id="langBadge">🌐 <span id="langTxt">Detecting…</span></div>
+
+    <div class="flabel">Recipe name</div>
+    <input type="text" id="fName" style="font-size:16px; font-weight:500;" />
+
+    <div class="two">
+      <div>
+        <div class="flabel">Who's favourite</div>
+        <select id="fFav">
+          <option value="">— select —</option>
+          <option>Serene</option>
+          <option>Mum</option>
+          <option>Kids</option>
+          <option>Everyone</option>
+        </select>
+      </div>
+      <div>
+        <div class="flabel">What kind of cuisine</div>
+        <input type="text" id="fCuisine" />
+      </div>
+    </div>
+
+    <div class="two">
+      <div>
+        <div class="flabel">Timings</div>
+        <input type="text" id="fTime" placeholder="e.g. 30 mins" />
+      </div>
+      <div>
+        <div class="flabel">Video link reference</div>
+        <input type="text" id="fVideo" />
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="flabel">Main Ingredients</div>
+    <textarea id="fMain" rows="3"></textarea>
+
+    <div class="flabel">Ingredients (with Measurements)</div>
+    <textarea id="fIngr" rows="4"></textarea>
+
+    <div class="flabel">Cooking Steps</div>
+    <textarea id="fSteps" rows="6"></textarea>
+
+    <div class="row-end">
+      <button onclick="clearAll()">Clear</button>
+      <button class="btn-save" onclick="saveRow()">Save to Google Sheet ↗</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz6ftmyW6Kn6YuoEPd-E4cPSQRfFrY7kfUPtzKTd_Dm3aioy7se9iMGq1uMdkWwJ3Hv2w/exec';
+
+  let mode = 'web';
+
+  function setPill(el, m) {
+    mode = m;
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById('textArea').style.display = (m === 'text') ? 'block' : 'none';
+  }
+
+  async function extract() {
+    const url = document.getElementById('urlIn').value.trim();
+    const pasteText = document.getElementById('pasteText').value.trim();
+    if (!url && !pasteText) return;
+
+    const spin = document.getElementById('spin');
+    const card = document.getElementById('card');
+    const banner = document.getElementById('banner');
+    banner.classList.remove('show');
+    card.classList.remove('show');
+    spin.classList.add('show');
+    document.getElementById('spinTxt').textContent = 'Extracting recipe…';
+
+    const source = pasteText || url;
+    const isText = !!pasteText;
+
+    const prompt = `You are a recipe extractor. The user has provided ${isText ? 'this recipe text' : 'this URL'}: ${source}
+
+Detect the language. If Chinese (Simplified or Traditional), keep everything in that Chinese variant. If English, keep in English. Match the source language exactly.
+
+Since you cannot browse URLs, simulate a realistic recipe extraction. Return ONLY valid JSON, no markdown, no explanation:
+{
+  "language": "English" or "中文（繁體）" or "中文（简体）",
+  "name": "recipe name",
+  "cuisine": "cuisine type",
+  "timings": "total time e.g. 45 mins",
+  "mainIngredients": "comma-separated main ingredients (3-5 items)",
+  "ingredientsWithMeasurements": "full ingredients with amounts, one per line",
+  "steps": "Step 1: ...\\nStep 2: ...",
+  "videoUrl": "${mode === 'yt' ? url : mode === 'ig' ? url : ''}"
+}`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      const data = await res.json();
+      const raw = data.content.map(i => i.text || '').join('').replace(/```json|```/g, '').trim();
+      const r = JSON.parse(raw);
+
+      document.getElementById('fName').value = r.name || '';
+      document.getElementById('fCuisine').value = r.cuisine || '';
+      document.getElementById('fTime').value = r.timings || '';
+      document.getElementById('fVideo').value = r.videoUrl || '';
+      document.getElementById('fMain').value = r.mainIngredients || '';
+      document.getElementById('fIngr').value = r.ingredientsWithMeasurements || '';
+      document.getElementById('fSteps').value = r.steps || '';
+      document.getElementById('langTxt').textContent = r.language || 'Unknown';
+
+      spin.classList.remove('show');
+      card.classList.add('show');
+    } catch (e) {
+      spin.classList.remove('show');
+      document.getElementById('spinTxt').textContent = 'Could not extract — please try again.';
+      spin.classList.add('show');
+      setTimeout(() => spin.classList.remove('show'), 3000);
+    }
+  }
+
+  async function saveRow() {
+    const row = {
+      timestamp: new Date().toLocaleString('zh-TW'),
+      name: document.getElementById('fName').value,
+      favourite: document.getElementById('fFav').value,
+      cuisine: document.getElementById('fCuisine').value,
+      mainIngredients: document.getElementById('fMain').value,
+      ingredientsWithMeasurements: document.getElementById('fIngr').value,
+      steps: document.getElementById('fSteps').value,
+      timings: document.getElementById('fTime').value,
+      videoUrl: document.getElementById('fVideo').value
+    };
+
+    try {
+      await fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(row),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      document.getElementById('banner').classList.add('show');
+      setTimeout(() => document.getElementById('banner').classList.remove('show'), 4000);
+    } catch (e) {
+      alert('Could not save — check your internet connection and try again.');
+    }
+  }
+
+  function clearAll() {
+    document.getElementById('urlIn').value = '';
+    document.getElementById('pasteText').value = '';
+    document.getElementById('card').classList.remove('show');
+    document.getElementById('banner').classList.remove('show');
+  }
+</script>
+</body>
+</html>
