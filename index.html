@@ -86,9 +86,16 @@
     <div class="two">
       <div>
         <div class="flabel">Who's favourite</div>
-        <select id="fFav">
-          <option value="">— select —</option>
-<option>Serene</option><option>Scarlett</option><option>Sophia</option><option>Pat</option>        </select>
+<div style="display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:4px;">
+  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+    <input type="checkbox" value="Serene" class="fav-check"> Serene</label>
+  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+    <input type="checkbox" value="Scarlett" class="fav-check"> Scarlett</label>
+  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+    <input type="checkbox" value="Sophia" class="fav-check"> Sophia</label>
+  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
+    <input type="checkbox" value="Pat" class="fav-check"> Pat</label>
+</div>
       </div>
       <div>
         <div class="flabel">What kind of cuisine</div>
