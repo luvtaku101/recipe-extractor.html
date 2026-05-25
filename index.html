@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en">F
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -217,8 +217,7 @@ async function saveRow() {
   const row = {
     timestamp: new Date().toLocaleString('zh-TW'),
     name: document.getElementById('fName').value,
-    favourite: document.getElementById('fFav').value,
-    cuisine: document.getElementById('fCuisine').value,
+favourite: [...document.querySelectorAll('.fav-check:checked')].map(c => c.value).join(', '),    cuisine: document.getElementById('fCuisine').value,
     mainIngredients: document.getElementById('fMain').value,
     ingredientsWithMeasurements: document.getElementById('fIngr').value,
     steps: document.getElementById('fSteps').value,
