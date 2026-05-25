@@ -41,8 +41,8 @@
   @keyframes sp { to { transform: rotate(360deg); } }
   .banner { display: none; align-items: center; gap: 8px; background: var(--success-light); color: var(--success); border-radius: 8px; padding: 12px 16px; font-size: 14px; font-weight: 500; margin-bottom: 1rem; border: 1px solid #b7dfc9; }
   .banner.show { display: flex; }
-  .error-box { display: none; align-items: center; gap: 8px; background: #fdf0ec; color: var(--accent); border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-bottom: 1rem; border: 1px solid #f0c4b8; }
-  .error-box.show { display: flex; }
+  .error-box { display: none; background: #fdf0ec; color: var(--accent); border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-bottom: 1rem; border: 1px solid #f0c4b8; line-height: 1.6; }
+  .error-box.show { display: block; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1rem; display: none; }
   .card.show { display: block; }
   .lang-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border-radius: 20px; background: var(--accent-light); color: var(--accent); border: 1px solid #f0c4b8; margin-bottom: 1rem; }
@@ -78,7 +78,7 @@
   </div>
   <div class="spinner" id="spin"><div class="spin"></div><span id="spinTxt">Fetching page…</span></div>
   <div class="banner" id="banner">✓ Saved to Google Sheet!</div>
-  <div class="error-box" id="errBox">⚠ <span id="errTxt"></span></div>
+  <div class="error-box" id="errBox"></div>
   <div class="card" id="card">
     <div class="lang-badge">🌐 <span id="langTxt">Detecting…</span></div>
     <div class="flabel">Recipe name</div>
@@ -122,7 +122,13 @@
 
 <script>
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz6ftmyW6Kn6YuoEPd-E4cPSQRfFrY7kfUPtzKTd_Dm3aioy7se9iMGq1uMdkWwJ3Hv2w/exec';
-const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+
+// Try multiple CORS proxies in order
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
 
 let mode = 'web';
 
@@ -135,29 +141,40 @@ function setPill(el, m) {
 
 function showError(msg) {
   const e = document.getElementById('errBox');
-  document.getElementById('errTxt').textContent = msg;
+  e.innerHTML = msg;
   e.classList.add('show');
   document.getElementById('spin').classList.remove('show');
 }
 
+function hideError() { document.getElementById('errBox').classList.remove('show'); }
+
 function setSpinner(txt) {
   document.getElementById('spinTxt').textContent = txt;
   document.getElementById('spin').classList.add('show');
-  document.getElementById('errBox').classList.remove('show');
+  hideError();
 }
 
-async function fetchPageText(url) {
-  const res = await fetch(CORS_PROXY + encodeURIComponent(url));
-  const data = await res.json();
-  const html = data.contents || '';
-  // Strip tags and collapse whitespace
-  const text = html.replace(/<script[\s\S]*?<\/script>/gi,'')
-                   .replace(/<style[\s\S]*?<\/style>/gi,'')
-                   .replace(/<[^>]+>/g,' ')
-                   .replace(/\s+/g,' ')
-                   .trim()
-                   .slice(0, 8000);
-  return text;
+async function fetchWithProxy(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const proxyUrl = PROXIES[i](url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text && text.length > 100) return text;
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+function stripHtml(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 10000);
 }
 
 async function extract() {
@@ -167,42 +184,38 @@ async function extract() {
 
   document.getElementById('card').classList.remove('show');
   document.getElementById('banner').classList.remove('show');
-  document.getElementById('errBox').classList.remove('show');
+  hideError();
 
   let pageContent = pasteText;
 
   if (!pasteText && mode !== 'text') {
     setSpinner('Fetching page content…');
-    try {
-      pageContent = await fetchPageText(url);
-      if (!pageContent || pageContent.length < 50) {
-        showError('Could not read this page. Try "Paste text" mode instead — copy the recipe text and paste it directly.');
-        return;
-      }
-    } catch(e) {
-      showError('Could not fetch this page. Try "Paste text" mode instead.');
+    const html = await fetchWithProxy(url);
+    if (!html) {
+      showError('⚠ Could not fetch this page automatically.<br><br><strong>Quick fix:</strong> Switch to <strong>📋 Paste text</strong> mode — open the recipe page, select all the text, copy it, and paste it there.');
       return;
     }
+    pageContent = stripHtml(html);
   }
 
   setSpinner('Extracting recipe with AI…');
 
-  const prompt = `You are a recipe extractor. Extract the recipe from this text content.
+  const prompt = `You are a recipe extractor. Extract the recipe from the text below.
 
-Detect the language. If Chinese (Simplified or Traditional), keep everything in that Chinese variant. If English, keep in English.
+Detect the language. If Traditional Chinese (繁體中文), keep everything in Traditional Chinese. If Simplified Chinese (简体中文), keep in Simplified Chinese. If English, keep in English. Match the source language exactly.
 
-Text content:
+Text:
 ${pageContent}
 
-Return ONLY valid JSON, no markdown, no explanation:
+Return ONLY valid JSON, no markdown, no extra text:
 {
-  "language": "English" or "中文（繁體）" or "中文（简体）",
+  "language": "中文（繁體）" or "中文（简体）" or "English",
   "name": "recipe name",
-  "cuisine": "cuisine type",
+  "cuisine": "cuisine type e.g. 西式, 中式, 日式",
   "timings": "total cooking time",
   "mainIngredients": "comma-separated main ingredients (3-5 items)",
   "ingredientsWithMeasurements": "full ingredient list with amounts, one per line",
-  "steps": "Step 1: ...\\nStep 2: ...",
+  "steps": "1) ...\n2) ...\n3) ...",
   "videoUrl": "${(mode === 'yt' || mode === 'ig') ? url : ''}"
 }`;
 
@@ -233,7 +246,7 @@ Return ONLY valid JSON, no markdown, no explanation:
     document.getElementById('spin').classList.remove('show');
     document.getElementById('card').classList.add('show');
   } catch(e) {
-    showError('AI extraction failed. Please try again.');
+    showError('⚠ AI extraction failed. Please try again.');
   }
 }
 
@@ -263,7 +276,7 @@ function clearAll() {
   document.getElementById('pasteText').value = '';
   document.getElementById('card').classList.remove('show');
   document.getElementById('banner').classList.remove('show');
-  document.getElementById('errBox').classList.remove('show');
+  hideError();
 }
 </script>
 </body>
