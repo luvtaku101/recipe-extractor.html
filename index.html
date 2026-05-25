@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">F
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,8 +22,8 @@
   .sheet-note { font-size: 12px; color: var(--muted); background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 1.5rem; line-height: 1.6; }
   .sheet-note strong { color: var(--ink); }
   .url-row { display: flex; gap: 8px; margin-bottom: 12px; }
-  input[type="text"], textarea, select { font-family: var(--sans); font-size: 14px; color: var(--ink); background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; outline: none; transition: border-color 0.15s; width: 100%; }
-  input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--ink); }
+  input[type="text"], textarea { font-family: var(--sans); font-size: 14px; color: var(--ink); background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; outline: none; transition: border-color 0.15s; width: 100%; }
+  input[type="text"]:focus, textarea:focus { border-color: var(--ink); }
   .url-row input { flex: 1; }
   button { font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 8px; padding: 10px 18px; border: 1px solid var(--border); background: white; color: var(--ink); transition: all 0.15s; white-space: nowrap; }
   button:hover { background: var(--cream); }
@@ -51,6 +51,9 @@
   textarea { resize: vertical; line-height: 1.6; }
   .row-end { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; flex-wrap: wrap; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+  .fav-boxes { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 4px; }
+  .fav-boxes label { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; color: var(--ink); }
+  .fav-boxes input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
   @media (max-width: 500px) { .two { grid-template-columns: 1fr; } .row-end { flex-direction: column; } .row-end button { width: 100%; } }
 </style>
 </head>
@@ -81,27 +84,26 @@
   <div class="error-box" id="errBox"></div>
   <div class="card" id="card">
     <div class="lang-badge">🌐 <span id="langTxt">Detecting…</span></div>
+
     <div class="flabel">Recipe name</div>
     <input type="text" id="fName" style="font-size:16px;font-weight:500;" />
+
     <div class="two">
       <div>
         <div class="flabel">Who's favourite</div>
-<div style="display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:4px;">
-  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
-    <input type="checkbox" value="Serene" class="fav-check"> Serene</label>
-  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
-    <input type="checkbox" value="Scarlett" class="fav-check"> Scarlett</label>
-  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
-    <input type="checkbox" value="Sophia" class="fav-check"> Sophia</label>
-  <label style="display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer;">
-    <input type="checkbox" value="Pat" class="fav-check"> Pat</label>
-</div>
+        <div class="fav-boxes">
+          <label><input type="checkbox" class="fav-check" value="Serene"> Serene</label>
+          <label><input type="checkbox" class="fav-check" value="Scarlett"> Scarlett</label>
+          <label><input type="checkbox" class="fav-check" value="Sophia"> Sophia</label>
+          <label><input type="checkbox" class="fav-check" value="Pat"> Pat</label>
+        </div>
       </div>
       <div>
         <div class="flabel">What kind of cuisine</div>
         <input type="text" id="fCuisine" />
       </div>
     </div>
+
     <div class="two">
       <div>
         <div class="flabel">Timings</div>
@@ -112,13 +114,18 @@
         <input type="text" id="fVideo" />
       </div>
     </div>
+
     <hr class="divider" />
+
     <div class="flabel">Main Ingredients</div>
     <textarea id="fMain" rows="3"></textarea>
+
     <div class="flabel">Ingredients (with Measurements)</div>
     <textarea id="fIngr" rows="4"></textarea>
+
     <div class="flabel">Cooking Steps</div>
     <textarea id="fSteps" rows="6"></textarea>
+
     <div class="row-end">
       <button onclick="clearAll()">Clear</button>
       <button class="btn-save" onclick="saveRow()">Save to Google Sheet ↗</button>
@@ -154,52 +161,6 @@ function setSpinner(txt) {
   hideError();
 }
 
-async function extract() {
-  const url = document.getElementById('urlIn').value.trim();
-  const pasteText = document.getElementById('pasteText').value.trim();
-  if (!url && !pasteText) return;
-
-  document.getElementById('card').classList.remove('show');
-  document.getElementById('banner').classList.remove('show');
-  hideError();
-
-  // Paste text mode — send text directly to worker
-  if (pasteText || mode === 'text') {
-    setSpinner('Extracting recipe…');
-    try {
-      const res = await fetch(`${WORKER_URL}/extract`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageUrl: url || 'unknown', pasteText, mode })
-      });
-      const r = await res.json();
-      fillForm(r);
-    } catch(e) {
-      showError('⚠ Extraction failed. Please try again.');
-    }
-    return;
-  }
-
-  // URL mode — worker fetches the page
-  setSpinner('Fetching page and extracting recipe…');
-  try {
-    const res = await fetch(`${WORKER_URL}/extract`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pageUrl: url, mode })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      showError('⚠ ' + (err.error || 'Could not extract recipe.') + '<br><br><strong>Try:</strong> Switch to 📋 Paste text mode instead.');
-      return;
-    }
-    const r = await res.json();
-    fillForm(r);
-  } catch(e) {
-    showError('⚠ Could not reach the server. Check your connection and try again.');
-  }
-}
-
 function fillForm(r) {
   document.getElementById('fName').value = r.name || '';
   document.getElementById('fCuisine').value = r.cuisine || '';
@@ -213,11 +174,43 @@ function fillForm(r) {
   document.getElementById('card').classList.add('show');
 }
 
+async function extract() {
+  const url = document.getElementById('urlIn').value.trim();
+  const pasteText = document.getElementById('pasteText').value.trim();
+  if (!url && !pasteText) return;
+
+  document.getElementById('card').classList.remove('show');
+  document.getElementById('banner').classList.remove('show');
+  document.querySelectorAll('.fav-check').forEach(c => c.checked = false);
+  hideError();
+
+  setSpinner('Fetching page and extracting recipe…');
+
+  try {
+    const res = await fetch(`${WORKER_URL}/extract`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageUrl: url || 'unknown', pasteText, mode })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      showError('⚠ ' + (err.error || 'Could not extract recipe.') + '<br><br><strong>Try:</strong> Switch to 📋 Paste text mode instead.');
+      return;
+    }
+    const r = await res.json();
+    fillForm(r);
+  } catch(e) {
+    showError('⚠ Could not reach the server. Check your connection and try again.');
+  }
+}
+
 async function saveRow() {
+  const favourite = [...document.querySelectorAll('.fav-check:checked')].map(c => c.value).join(', ');
   const row = {
     timestamp: new Date().toLocaleString('zh-TW'),
     name: document.getElementById('fName').value,
-favourite: [...document.querySelectorAll('.fav-check:checked')].map(c => c.value).join(', '),    cuisine: document.getElementById('fCuisine').value,
+    favourite,
+    cuisine: document.getElementById('fCuisine').value,
     mainIngredients: document.getElementById('fMain').value,
     ingredientsWithMeasurements: document.getElementById('fIngr').value,
     steps: document.getElementById('fSteps').value,
@@ -236,6 +229,7 @@ favourite: [...document.querySelectorAll('.fav-check:checked')].map(c => c.value
 function clearAll() {
   document.getElementById('urlIn').value = '';
   document.getElementById('pasteText').value = '';
+  document.querySelectorAll('.fav-check').forEach(c => c.checked = false);
   document.getElementById('card').classList.remove('show');
   document.getElementById('banner').classList.remove('show');
   hideError();
