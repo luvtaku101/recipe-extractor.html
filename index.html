@@ -166,8 +166,8 @@ function fillForm(r) {
   document.getElementById('fCuisine').value = r.cuisine || '';
   document.getElementById('fTime').value = r.timings || '';
   document.getElementById('fVideo').value = r.videoUrl || '';
-  document.getElementById('fMain').value = r.mainIngredients || '';
-  document.getElementById('fIngr').value = r.ingredientsWithMeasurements || '';
+  document.getElementById('fMain').value = (r.mainIngredients || '').replace(/,\s*/g, '\n').replace(/\|/g, '\n');
+  document.getElementById('fIngr').value = (r.ingredientsWithMeasurements || '').replace(/\|/g, '\n');
   document.getElementById('fSteps').value = r.steps || '';
   document.getElementById('langTxt').textContent = r.language || 'Unknown';
   document.getElementById('spin').classList.remove('show');
@@ -211,8 +211,8 @@ async function saveRow() {
     name: document.getElementById('fName').value,
     favourite,
     cuisine: document.getElementById('fCuisine').value,
-    mainIngredients: document.getElementById('fMain').value,
-    ingredientsWithMeasurements: document.getElementById('fIngr').value,
+    mainIngredients: document.getElementById('fMain').value.split('\n').map(s=>s.trim()).filter(Boolean).join('|'),
+    ingredientsWithMeasurements: document.getElementById('fIngr').value.split('\n').map(s=>s.trim()).filter(Boolean).join('|'),
     steps: document.getElementById('fSteps').value,
     timings: document.getElementById('fTime').value,
     videoUrl: document.getElementById('fVideo').value
